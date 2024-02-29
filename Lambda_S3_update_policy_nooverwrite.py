@@ -100,13 +100,17 @@ def modify_bucket_objects(Name):
     try:
         my_bucket = s3_resource.Bucket(Name)
         for my_bucket_object in my_bucket.objects.all():
-            #print(my_bucket_object.key)
+            #print(my_bucket_object)
             object = s3_resource.Object(Name,my_bucket_object.key)
-            #print(object)
-            logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key}')
-            object.put(StorageClass='INTELLIGENT_TIERING')
+            #print(object.storage_class)
+            #if object.storage_class != 'INTELLIGENT_TIERING' :
+            if object.storage_class is None :
+                #print(object.key,object.storage_class)
+                logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key} from {object.storage_class}')
+                object.put(StorageClass='INTELLIGENT_TIERING')
+                # accepted values are 'STANDARD' |'REDUCED_REDUNDANCY'|'STANDARD_IA'|'ONEZONE_IA'|'INTELLIGENT_TIERING'|'GLACIER'
     except ClientError as err:
-        print (err.response['Error']['Code'])   
+        print (err.response['Error']['Code'])  
         
 def put_bucket_lifecycle_configuration(Name, lifecycle_config):
     ownerAccountId = getAccountID()
