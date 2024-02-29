@@ -4,8 +4,9 @@ from botocore.exceptions import ClientError
 
 logging.basicConfig(level=logging.INFO,format='%(levelname)s: %(asctime)s: %(message)s')
 # boto3_session = boto3.session.Session(profile_name='967655172285_ie_dev_AdministratorAccess')
-boto3_session = boto3.session.Session(profile_name='929292782238_tri-na_AdministratorAccess')
+boto3_session = boto3.session.Session()
 s3_client = boto3_session.resource('s3')
+s3_resource=boto3_session.resource('s3')
 
 def visit_buckets() :
     lifecycle_config_settings_it = {
@@ -85,10 +86,23 @@ def put_bucket_intelligent_tiering_configuration(bucket_name, archive_policy, id
         return False
     return True
 
+def modify_bucket_objects(Name):
+    try:
+        my_bucket = s3_resource.Bucket(Name)
+        for my_bucket_object in my_bucket.objects.all():
+            #print(my_bucket_object.key)
+            object = s3_resource.Object(Name,my_bucket_object.key)
+            #print(object)
+            logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key}')
+            object.put(StorageClass='INTELLIGENT_TIERING')
+    except ClientError as err:
+        print (err.response['Error']['Code'])  
 
 if __name__ == '__main__' :
     logging.info(f'{__file__}')
-    visit_buckets()
+    #visit_buckets()
+    modify_bucket_objects('ds-demo-bucket')
+
 
 
 
