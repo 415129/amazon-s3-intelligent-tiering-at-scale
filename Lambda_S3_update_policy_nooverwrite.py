@@ -106,7 +106,7 @@ def modify_bucket_objects(Name):
             #if object.storage_class != 'INTELLIGENT_TIERING' :
             if object.storage_class is None :
                 #print(object.key,object.storage_class)
-                logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key} from {object.storage_class}')
+                logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key} from {object.storage_class}  or STANDARD')
                 object.put(StorageClass='INTELLIGENT_TIERING')
                 # accepted values are 'STANDARD' |'REDUCED_REDUNDANCY'|'STANDARD_IA'|'ONEZONE_IA'|'INTELLIGENT_TIERING'|'GLACIER'
     except ClientError as err:
