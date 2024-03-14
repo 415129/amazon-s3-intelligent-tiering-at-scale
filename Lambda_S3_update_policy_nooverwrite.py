@@ -5,6 +5,12 @@ import boto3
 import logging
 from botocore.exceptions import ClientError
 #from tqdm import tqdm
+from configparser import ConfigParser
+
+file = "config.ini"    # give the path to the file
+config = ConfigParser()
+config.read(file)
+
 
 logging.basicConfig(level=logging.INFO,format='%(levelname)s: %(asctime)s: %(message)s')
 logger = logging.getLogger()
@@ -16,6 +22,7 @@ client = boto3.client('sts')
 bucket_tag_key = "storage.class"
 bucket_tag_value = "s3.it"
 TransitionStatus = []
+
 
 def lambda_handler(event,context):
     logger.info('## ENVIRONMENT VARIABLES')
