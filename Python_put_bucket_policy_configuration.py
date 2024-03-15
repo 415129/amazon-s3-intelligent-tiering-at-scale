@@ -102,50 +102,82 @@ def delete_bucket_objects(Name,type,age,FileSize):
             if object.size > FileSize and object.key[-3:] == type and object.last_modified.replace(tzinfo = None).isoformat() < age :
                 #print(object.last_modified - timedelta(days=age) )
                 print(object.key,object.size,object.last_modified,object.key[-3:])
-                #object.delete()
+                logging.info(f'Bucket = {Name}:Deleing object {object.key} from {Name} ')
+                object.delete()
     except ClientError as err:
         print (err.response['Error']['Code']) 
-        
-def modify_bucket_objects(Name):
+
+def keep_bucket_objects(Name,StorageClass,FileSize):
     try:
         my_bucket = s3_resource.Bucket(Name)
         for my_bucket_object in my_bucket.objects.all():
             #print(my_bucket_object)
-            object = s3_resource.Object(Name,my_bucket_object.key)
-            print(object.storage_class)
+            object = s3_resource.ObjectSummary(Name,my_bucket_object.key)
+            #print(object.storage_class)
             #if object.storage_class != 'INTELLIGENT_TIERING' :
-            if object.storage_class is None :
+            if object.storage_class is None and object.size > FileSize :
                 print(object.key,object.storage_class)
-                logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key} from {object.storage_class} or STANDARD')
-                object.put(StorageClass='STANDARD_IA')
+                logging.info(f'Bucket = {Name}:Changing Storage Class for {my_bucket_object.key} from STANDARD to {StorageClass}')
+                object.put(StorageClass=StorageClass)
                 # accepted values are 'STANDARD' |'REDUCED_REDUNDANCY'|'STANDARD_IA'|'ONEZONE_IA'|'INTELLIGENT_TIERING'|'GLACIER'
     except ClientError as err:
         print (err.response['Error']['Code'])  
-
+        
+def modify_bucket_objects(Name,StorageClass,FileSize,type):
+    try:
+        my_bucket = s3_resource.Bucket(Name)
+        for my_bucket_object in my_bucket.objects.all():
+            #print(my_bucket_object)
+            object = s3_resource.ObjectSummary(Name,my_bucket_object.key)
+            #print(object.storage_class)
+            #if object.storage_class != 'INTELLIGENT_TIERING' :
+            if object.storage_class is None and object.size >= FileSize and object.key[-3:] != type:
+                print(object.key,object.storage_class,object.size)
+                logging.info(f'Bucket = {Name} : Changing Storage Class of {object.key} from  STANDARD to {StorageClass}')
+                object.put(StorageClass=StorageClass)
+                # accepted values are 'STANDARD' |'REDUCED_REDUNDANCY'|'STANDARD_IA'|'ONEZONE_IA'|'INTELLIGENT_TIERING'|'GLACIER'
+    except ClientError as err:
+        print (err.response['Error']['Code'])  
+def populate_data (config):
+    for bucket in s3_client.buckets.all():
+        if bucket.name not in config :
+            logging.info(f'Adding Bucket = {bucket.name} in Config.ini file')          
+            config[bucket.name] = {}
+            with open(file, 'w') as configfile:
+                config.write(configfile)
+        
 if __name__ == '__main__' :
     logging.info(f'{__file__}')
     #visit_buckets()
     #config = ConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
     config = ConfigParser()
     config.read(file)
+    populate_data(config)
     for bucket in config.sections():
-        print(bucket)
-        StorageClass = config[bucket]['StorageClass'].upper().replace("'","")
-        #FileType = config.getlist[bucket]['FileType']
-        FileType = [e.strip() for e in config.get(bucket , 'FileType' ).split(',')]
-        FileSize = config[bucket]['FileSize']
-        print(StorageClass)
-        print(FileSize)
-        for ty1 in FileType:
-            print(ty1)
-            type = ty1.split(':')[0]
-            action = ty1.split(':')[1]
-            if action.lower() == 'delete':
-                aget = int(ty1.split(':')[2])
-                age = (datetime.today().replace(tzinfo=None) - timedelta(days=aget)).isoformat()
-                print(age)
-                delete_bucket_objects(bucket,type,age,int(float(FileSize)))
-        #modify_bucket_objects('ds-demo-bucket')
+        ignoreBucket=config[bucket]['ignoreBucket']
+        if ignoreBucket.lower() == 'false':            
+            print(bucket)
+            StorageClass = config[bucket]['StorageClass'].upper().replace("'","")
+            #FileType = config.getlist[bucket]['FileType']
+            FileType = [e.strip() for e in config.get(bucket , 'FileType' ).split(',')]
+            FileSize = config[bucket]['FileSize']
+            print(StorageClass)
+            print(FileSize)
+            for ty1 in FileType:
+                print(ty1)
+                type = ty1.split(':')[0]
+                action = ty1.split(':')[1]
+                if action.lower() == 'delete':
+                    aget = int(ty1.split(':')[2])
+                    age = (datetime.today().replace(tzinfo=None) - timedelta(days=aget)).isoformat()
+                    print(age)
+                    delete_bucket_objects(bucket,type,age,int(float(FileSize)))
+                elif action.lower() == 'keep':
+                    keep_bucket_objects(bucket,StorageClass,int(float(FileSize)))
+                elif action.lower() == 'ignore':
+                    logging.info(f'Ignoring {type} type of objects in Bucket = {bucket}')
+                else :
+                    modify_bucket_objects(bucket,StorageClass,int(float(FileSize)),type)
     
 
 
