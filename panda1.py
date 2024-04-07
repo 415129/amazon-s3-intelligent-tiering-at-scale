@@ -93,12 +93,19 @@ def createLCP(Name):
 
 # Policy Dictionary to track LC policy of the bucket
 policy = {}
+ruledict= {}
 def getLCP(Name):
     ownerAccountId = getAccountID()
     try:
         result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
-        Rules= result['Rules'][0]
-        policy[Name] = Rules
+        Rules = result['Rules']
+        n = 1
+        for r1 in Rules:
+            vname= Name + '_Rule_' + str(n)
+            policy[vname] = r1
+            n += 1
+        #print(Rules.type())            
+        #policy[Name] = Rules
         #print(policy)
     except ClientError as err:
         print(err.response['Error']['Code'])
@@ -109,7 +116,7 @@ def listBuckets():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in tqdm(BucketName['Buckets']):
-        if  bucket['Name'] not in ignorelist:
+        if  bucket['Name'] not in ignorelist: #and bucket['Name'] == 'ds-demo-bucket':
             Name = bucket['Name']
             getLCP(Name)
     #getLCP('ds-demo-bucket')
@@ -128,11 +135,15 @@ def listBuckets():
 #     df['lcname'] = list[4::5]
 #     df.to_excel(filename, index = False)
 
-def createXls(list):
+def createXls(user_dict):
     currenttime = now.strftime("%H%M%S")
-    filename = getAccountID() +"-"+currenttime+".xlsx"
+    filename = getAccountID()+".xlsx" #+"-"+currenttime+".xlsx"
     print("Results are available in ./" + filename + ".")
-    df = pd.DataFrame(list).transpose()
+    df = pd.DataFrame.from_dict(user_dict, orient='columns').transpose()
+    # df = pd.DataFrame.from_dict({(i,j): user_dict[i][j] 
+    #                        for i in user_dict.keys() 
+    #                        for j in user_dict[i].keys()},
+    #                    orient='index').transpose()
     df.to_excel(filename, index = True)
     
 if __name__ == "__main__":
