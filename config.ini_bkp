@@ -3,12 +3,22 @@ filetype = log:delete:900,bkp:ignore:90
 age = 30
 storageclass = 'STANDARD_IA'
 filesize = 1024000
-ignorebucket = false
+ignorebucket = account1-name-data-classification,amplify-amplifyapp-staging-22504-deployment
 
 [ds-demo-bucket]
 filetype = log:delete:90,sh:keep:90,bkp:ignore:90
 storageclass = 'STANDARD_IA'
 filesize = 1024
 
-[account1-name-data-classification]
-ignorebucket = true
+
+[oraclebkupbucket]
+filetype = dmp:delete:720,sh:keep:90,bkp:ignore:90
+storageclass = 'REDUCED_REDUNDANCY'
+filesize = 1024
+
+1. min size 10MB
+2. minage 180 days
+3. no change on ignore (may be add some tag)
+4. keep will change the storage class
+5. ignore buckets on regex
+6. versioning delete ???

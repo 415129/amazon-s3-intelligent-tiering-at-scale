@@ -1,9 +1,12 @@
-import boto3
+import boto3,json
 import logging
 from botocore.exceptions import ClientError
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 import re
+from openpyxl import Workbook
+import pandas as pd
+import json
 
 file = "config.ini"    # give the path to the file
 # config = ConfigParser()
@@ -14,7 +17,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(asctime)s: %(message)s')
 # boto3_session = boto3.session.Session(profile_name='967655172285_ie_dev_AdministratorAccess')
 boto3_session = boto3.session.Session()
-s3_client = boto3_session.resource('s3')
+s3_client = boto3_session.client('s3')
 s3_resource = boto3_session.resource('s3')
 
 
@@ -208,34 +211,43 @@ def populate_data(config):
 
 if __name__ == '__main__':
     logging.info(f'{__file__}')
-    # visit_buckets()
-    # config = ConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
-    config = ConfigParser()
-    config.read(file)
-    populate_data(config)
-    for bucket in config.sections():
-        print(bucket)
-        StorageClass = config[bucket]['StorageClass'].upper().replace("'", "")
-        # FileType = config.getlist[bucket]['FileType']
-        FileType = [e.strip() for e in config.get(bucket, 'FileType').split(',')]
-        FileSize = config[bucket]['FileSize']
-        print(StorageClass)
-        print(FileSize)
-        for ty1 in FileType:
-            print(ty1)
-            type = ty1.split(':')[0]
-            action = ty1.split(':')[1]
-            if action.lower() == 'delete':
-                aget = int(ty1.split(':')[2])
-                age = (datetime.today().replace(tzinfo=None) -
-                       timedelta(days=aget)).isoformat()
-                print(age)
-                delete_bucket_objects(bucket, type, age, int(float(FileSize)))
-            elif action.lower() == 'keep':
-                ksclass = ty1.split(':')[2]
-                keep_bucket_objects(bucket, ksclass, type)
-            elif action.lower() == 'ignore':
-                logging.info(f'Ignoring {type} type of objects in Bucket = {bucket}')
-            else:
-                modify_bucket_objects(
-                    bucket, StorageClass, int(float(FileSize)), type)
+    wb = Workbook()
+    ws = wb.active
+    r = 1
+    c = 1
+    
+    for i in range(0,1000):      
+        for j in range(0,1000):
+            print (i,j,r,c)
+            for bucket in s3_resource.buckets.all():
+                try:
+                    print('=======================')
+                    print(bucket.name)
+                    r1= i + r
+                    c1= j+ c
+                    ws.cell(row=r1,column=c1).value = bucket.name
+                    print('=======================')
+                    bktpolicy= s3_client.get_bucket_lifecycle(Bucket=bucket.name)
+                    #json.loads(bktpolicy)
+                    for dict in bktpolicy['Rules']:
+                        #print(dict)
+                        for key,val in dict.items():
+                            c = c + 1
+                            c2 = c1 + c
+                            ws.cell(row=r1,column=c2).value = val
+                            
+                            #print(key,val)
+
+                except ClientError as err:
+                    print(err.response['Error']['Code'])
+                
+    wb.save(filename = "bucket_lsRules.xlsx")
+    
+    for bucket in s3_resource.buckets.all():
+        try:
+            bktpolicy= s3_client.get_bucket_lifecycle(Bucket=bucket.name)
+            print(bktpolicy)
+        except ClientError as err:
+            print(err.response['Error']['Code'])
+            
+            

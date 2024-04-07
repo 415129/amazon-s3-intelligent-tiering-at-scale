@@ -6,6 +6,7 @@ import logging
 from botocore.exceptions import ClientError
 #from tqdm import tqdm
 from configparser import ConfigParser
+from openpyxl import Workbook
 
 file = "config.ini"    # give the path to the file
 config = ConfigParser()
