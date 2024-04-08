@@ -16,6 +16,7 @@ from tqdm import tqdm
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
+from openpyxl.styles import Font
 
 s3 = boto3.client('s3')
 now = datetime.now()
@@ -25,6 +26,7 @@ client = boto3.client('sts')
 ignorelist=[]
 servicelist=['vpc','s3','elb','CloudTrail','rds']
 region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2']
+column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
 
 def createignorelist():
     ownerAccountId=getAccountID()
@@ -158,7 +160,17 @@ def convertxls(filename):
     max_col=ws.max_column
 
     #print(max_row,max_col)
-
+    for c1 in column_list:
+        if c1 in (COL[0].value for COL in ws.iter_cols(1, ws.max_column)):
+            #print(c1,COL[0].value)
+            continue
+        else:
+            new_column = ws.max_column + 1
+            #print(f'Missing Column: {c1}')
+            ws.cell(row=1, column=new_column , value=c1)
+            myRow = ws.row_dimensions[1]
+            myRow.font = Font(bold=True)
+            
     for COL in ws.iter_cols(1, ws.max_column):
         if COL[0].value == 'ID':
             for i, cell in enumerate(COL):

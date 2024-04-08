@@ -1,12 +1,29 @@
-
-#from openpyxl.styles import Font, Style
-wb = load_workbook(filename)
+from openpyxl import Workbook
+from openpyxl import load_workbook
+from openpyxl.comments import Comment
+from openpyxl.styles import Font
+wb = load_workbook('813408048622.xlsx')
 ws = wb.active
 
 max_row=ws.max_row
 max_col=ws.max_column
 
 print(max_row,max_col)
+column_list=['test2',None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
+
+for c1 in column_list:
+    #for COL in ws.iter_cols(1, ws.max_column):
+        if c1 in (COL[0].value for COL in ws.iter_cols(1, ws.max_column)):
+            #print(c1,COL[0].value)
+            continue
+        else:
+            new_column = ws.max_column + 1
+            print(f'Missing Column: {c1}')
+            ws.cell(row=1, column=new_column , value=c1)
+            myRow = ws.row_dimensions[1]
+            myRow.font = Font(bold=True)
+
+
 
 for COL in ws.iter_cols(1, ws.max_column):
     if COL[0].value == 'ID':
@@ -55,4 +72,4 @@ for row in ws['A']:
         row.value=newvalue
     
     
-wb.save(filename + 'modified.xlsx')
+wb.save('813408048622.xlsx')  # + 'modified.xlsx')
