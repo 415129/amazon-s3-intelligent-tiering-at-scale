@@ -28,6 +28,76 @@ servicelist=['vpc','s3','elb','CloudTrail','rds']
 region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2']
 column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
 
+MMSVersioningPolicy = {
+    'Rules': [
+        {'ID': 'MMS-Versioning Policy',
+         'Expiration': {'Days': 31},
+         'Filter': {},
+         'Status': 'Enabled', 
+         'NoncurrentVersionExpiration': {'NoncurrentDays': 31, 'NewerNoncurrentVersions': 1}
+        }
+    ]}
+
+MMSMPUPolicy = {
+    'Rules': [
+        {
+          'ID': 'AbortIncompleteMultipartUpload',
+          'Expiration': {'ExpiredObjectDeleteMarker': False},
+          'Filter': {},
+          'Status': 'Enabled',
+          'AbortIncompleteMultipartUpload': {'DaysAfterInitiation': 7}           
+        }        
+        ]
+    }
+
+MMSDeleteMarkers= {
+    'Rules': [
+        {
+          'ID': 'MMSDeleteMarkers',
+          'Expiration': {'ExpiredObjectDeleteMarker': True},
+          'Filter': {},
+          'Status': 'Enabled'         
+        }        
+        ]
+    }
+
+def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
+    ownerAccountId = getAccountID()
+    try:
+        result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
+        #print(result)
+        Rules= result['Rules']
+        #print(Rules)
+        for target in Rules:
+            try:
+                
+                if target['Expiration']['ExpiredObjectDeleteMarker'] and target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture':
+                    deleteid = 'YES'
+                if target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] < 7 : 
+                    deleteid = 'YES'                
+                if target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUpload','MMSVersioningPolicy'] and  deleteid == 'YES':
+                    #deletelcp(Name,key) 
+                    print('deleteing lcp ==' + target['ID'])
+                    Rules.remove(target)  
+            except  KeyError:
+                continue
+                
+
+                
+            #if key in any(['AbortIncompleteMultipartUpload','NoncurrentVersionExpiration']):
+            #print(key,value) 
+        policy = lifecycle_config
+        Rules.append(policy['Rules'][0])
+        #print(Rules)
+        lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+    except ClientError as err:
+        if err.response['Error']['ArgumentName'] == 'ID':
+            print( err.response['Error']['ArgumentName'] + ' already exsists and skipping rule')
+            
+        #print(err.response['Error']['Code'])
+        #print(err.response)
+
+
 def createignorelist():
     ownerAccountId=getAccountID()
     for s1 in servicelist:
@@ -114,6 +184,8 @@ def getLCP(Name):
         #print(policy)
     except ClientError as err:
         print(err.response['Error']['Code'])
+        if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+            policy[Name] = {}
         
 # listBuckets - lists the buckets per region and check each bucket policy using createOrUpdateLCP() method  
 def listBuckets():
@@ -121,9 +193,12 @@ def listBuckets():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in tqdm(BucketName['Buckets']):
-        if  bucket['Name'] not in ignorelist: #and bucket['Name'] == 'ds-demo-bucket':
+        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'max-backup-oregon':
             Name = bucket['Name']
             getLCP(Name)
+            put_bucket_lifecycle_configuration_standard(Name,MMSVersioningPolicy)
+            put_bucket_lifecycle_configuration_standard(Name,MMSMPUPolicy)
+            put_bucket_lifecycle_configuration_standard(Name,MMSDeleteMarkers)
     #getLCP('ds-demo-bucket')
     #getLCP('audit-813408048622')
             
