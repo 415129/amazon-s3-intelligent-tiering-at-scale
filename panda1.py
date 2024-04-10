@@ -70,10 +70,10 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
         #print(Rules)
         for target in Rules:
             try:
-                
+                #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
                 if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 or target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
-                    
                     #deletelcp(Name,key) 
+                    print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])
                     print('Deleteing LCP from Bucket = ' + Name + ' ,LCP =' + target['ID'])
                     Rules.remove(target)
                     s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
