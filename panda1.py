@@ -71,19 +71,15 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
         for target in Rules:
             try:
                 
-                if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 or target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
                     
                     #deletelcp(Name,key) 
-                    print('deleteing lcp ==' + target['ID'])
+                    print('Deleteing LCP from Bucket = ' + Name + ' ,LCP =' + target['ID'])
                     Rules.remove(target)
                     s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
             except  KeyError:
                 continue
-                
 
-                
-            #if key in any(['AbortIncompleteMultipartUpload','NoncurrentVersionExpiration']):
-            #print(key,value) 
         policy = lifecycle_config
         Rules.append(policy['Rules'][0])
         #print(Rules)
@@ -163,7 +159,7 @@ def updateBucketsLcpStd():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in tqdm(BucketName['Buckets']):
-        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'sagemaker-studio-813408048622-btehkj58uzi':
+        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'shankar-app-dev-logs':
             Name = bucket['Name']
             put_bucket_lifecycle_configuration_standard(Name,MMSVersioningPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSMPUPolicy)
