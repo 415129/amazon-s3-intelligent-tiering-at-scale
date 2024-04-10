@@ -89,11 +89,12 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
         #print(Rules)
         lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
     except ClientError as err:
-        if err.response['Error']['ArgumentName'] == 'ID':
-            print( err.response['Error']['ArgumentName'] + ' already exsists and skipping rule')
-            
-        #print(err.response['Error']['Code'])
         #print(err.response)
+        if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+            s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules': lifecycle_config['Rules'] })            
+        elif err.response['Error']['ArgumentName'] == 'ID':
+            print( err.response['Error']['ArgumentValue'] + ' already exsists and skipping rule')
+
 
 
 def createignorelist():
@@ -117,54 +118,16 @@ def getAccountID():
 
 def main():
     createignorelist()
-    listBuckets()
-    #createXls(TransitionStatus)
-    createXls(policy)
+    #listBuckets()
+    #createXls(policy,'prechange')
+    updateBucketsLcpStd()
+    #listBuckets()
+    #createXls(policy,'postchange')
     
 
 ## Global list variable to keep track of the Bucket Name, Transition Days, StorageClass, Status  
 TransitionStatus = []
 
-# This method returns the LC policy. This policy will be used as the default LC policy 
-# for the bucket with no LC policy and for the bucket with no "Transition policy" 
-# Pass the name of the bucket with the method
-def createLCP(Name):
-    lcp = {
-            'Rules': [
-                {
-                    'ID': "Added S3 INT Transition LC by automated script"+"-"+current_time,
-                    'Filter': {},
-                    'Status': 'Enabled',
-                    'Transitions': [
-                        {
-                            'Days': 0,
-                            'StorageClass': 'INTELLIGENT_TIERING'
-                        },
-                    ],
-                    'NoncurrentVersionTransitions': [
-                        {
-                            'NoncurrentDays': 0,
-                            'StorageClass': 'INTELLIGENT_TIERING'
-                        },
-                    ],
-                }
-            ]
-        }
-    return lcp
-
-# This method tracks the LC policy associated with the bucket. It checks for 3 scenarios. 
-# Scenario #1
-# If an LC policy exist,  the script checks if it has a transition policy (with a StorageClass such as Glacier, S3-Infrequent access or even S3-Intelligent Tiering or others). 
-# If the transition policy does not exist, the script will add a new policy to the existing policy with the transition set for the Current and Previous version to the INT StorageClass with “0” days using createLCP(Name) 
-# and records the action in the global list variable - TransitionStatus with the status = 'updated existing LC Policy'
-#Scenario #2
-# If an LC policy exist and has a transition policy (to move to a different StorageClass such as Glacier, S3-Infrequent access or others), the script  records its action action in the excel sheet and take no action on the LC policy.
-# It just records - transition storage and days to transition in the global list variable - TransitionStatus with the status = 'No Changes LC Policy'
-# Scenario #3
-#   If no LC policy is attached to the bucket, the script adds a new policy with the transition set for the Current and Previous version to the INT StorageClass with “0” days. 
-# It records its action in the excel sheet in the global list variable with the TransitionStatus = 'Added LC Policy'
-
-# Policy Dictionary to track LC policy of the bucket
 policy = {}
 ruledict= {}
 def getLCP(Name):
@@ -181,7 +144,7 @@ def getLCP(Name):
         #policy[Name] = Rules
         #print(policy)
     except ClientError as err:
-        print(err.response['Error']['Code'])
+        #print(err.response['Error']['Code'])
         if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
             policy[Name] = {}
         
@@ -191,31 +154,24 @@ def listBuckets():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in tqdm(BucketName['Buckets']):
-        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'max-backup-oregon':
+        if  bucket['Name'] not in ignorelist:
             Name = bucket['Name']
             getLCP(Name)
+
+def updateBucketsLcpStd():
+    BucketName = s3.list_buckets()
+    #print(ignorelist)
+    #for bucket in BucketName['Buckets']:
+    for bucket in tqdm(BucketName['Buckets']):
+        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'sagemaker-studio-813408048622-btehkj58uzi':
+            Name = bucket['Name']
             put_bucket_lifecycle_configuration_standard(Name,MMSVersioningPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSMPUPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSDeleteMarkers)
-    #getLCP('ds-demo-bucket')
-    #getLCP('audit-813408048622')
-            
-# createXls - create XLS sheet of the transitionStatus detail. The file name is "transitionStatus-HHMMSS.xlsx" where HHMMSS is the current time in hours, minutes, and seconds
-# def createXls(list):
-#     currenttime = now.strftime("%H%M%S")
-#     filename = "transitionStatus"+"-"+currenttime+".xlsx"
-#     print("Results are available in ./" + filename + ".")
-#     df = pd.DataFrame()
-#     df['BucketName'] = list[0::5]
-#     df['Days'] = list[1::5]
-#     df['StorageClass'] = list[2::5]
-#     df['TransitionStatus'] = list[3::5]
-#     df['lcname'] = list[4::5]
-#     df.to_excel(filename, index = False)
 
-def createXls(user_dict):
+def createXls(user_dict,stage):
     currenttime = now.strftime("%H%M%S")
-    filename = getAccountID()+".xlsx" #+"-"+currenttime+".xlsx"
+    filename = stage + getAccountID()+".xlsx" #+"-"+currenttime+".xlsx"
     print("Results are available in ./" + filename + ".")
     df = pd.DataFrame.from_dict(user_dict, orient='columns').transpose()
     # df = pd.DataFrame.from_dict({(i,j): user_dict[i][j] 
