@@ -41,7 +41,7 @@ MMSVersioningPolicy = {
 MMSMPUPolicy = {
     'Rules': [
         {
-          'ID': 'AbortIncompleteMultipartUpload',
+          'ID': 'AbortIncompleteMultipartUploadsRule',
           'Expiration': {'ExpiredObjectDeleteMarker': False},
           'Filter': {},
           'Status': 'Enabled',
@@ -71,14 +71,12 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
         for target in Rules:
             try:
                 
-                if target['Expiration']['ExpiredObjectDeleteMarker'] and target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture':
-                    deleteid = 'YES'
-                if target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] < 7 : 
-                    deleteid = 'YES'                
-                if target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUpload','MMSVersioningPolicy'] and  deleteid == 'YES':
+                if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                    
                     #deletelcp(Name,key) 
                     print('deleteing lcp ==' + target['ID'])
-                    Rules.remove(target)  
+                    Rules.remove(target)
+                    s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
             except  KeyError:
                 continue
                 
