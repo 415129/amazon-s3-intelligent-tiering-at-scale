@@ -30,7 +30,7 @@ column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', '
 
 MMSVersioningPolicy = {
     'Rules': [
-        {'ID': 'MMS-VersioningPolicy',
+        {'ID': 'MMSVersioningPolicy',
          'Expiration': {'Days': 31},
          'Filter': {},
          'Status': 'Enabled', 
@@ -61,6 +61,28 @@ MMSDeleteMarkers= {
         ]
     }
 
+MMSDeletionStandardPolicy = {
+    'Rules': [
+        {
+        'ID': 'MMSDeletionStandardPolicy',
+        'Expiration': {'Days': 2555},
+        'Filter': {}, 
+        'Status': 'Enabled'
+        }
+        ]
+    }
+
+MMSMoveCustomPolicy = {
+    'Rules': [
+        {
+        'ID': 'MMSMoveCustomPolicy',
+        'Filter': {'ObjectSizeGreaterThan': 131072}, 
+        'Status': 'Enabled',
+        'Transitions': [{'Days': 120, 'StorageClass': 'GLACIER_IR'}]
+        }
+        ]
+    }
+
 def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
     ownerAccountId = getAccountID()
     try:
@@ -71,8 +93,8 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
-                    if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
-                        print('Deleteing LCP from Bucket = ' + Name + ' ,LCP =' + target['ID'])
+                    if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                        print('0-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
@@ -81,24 +103,64 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
-                    if target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
-                        print('Deleteing LCP from Bucket = ' + Name + ' ,LCP =' + target['ID'])
+                    if target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 7 or target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                        print('1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
                     continue
-        elif lifecycle_config['Rules'][0]['ID'] == 'MMS-VersioningPolicy':
+        elif lifecycle_config['Rules'][0]['ID'] == 'MMSVersioningPolicy':
+            for target in Rules:
+                try:
+                    
+                    if target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 or target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31 or target['Expiration']['Days'] > 31 or target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                        #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] ,target['NoncurrentVersionExpiration']['NoncurrentDays'] , target['Expiration']['Days'] > 31 or target['ID'])               
+                        print('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        Rules.remove(target)
+                        s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+                except  KeyError:
+                    continue
+        elif lifecycle_config['Rules'][0]['ID'] == 'MMSDeletionStandardPolicy':
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
-                    if target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 or target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31 or target['ID'] not in ['MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
-                        print('Deleteing LCP from Bucket = ' + Name + ' ,LCP =' + target['ID'])
+                    if target['Expiration']['Days'] > 2555 or target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                        print('3-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
+                    continue        
+        
+        
+        policy = lifecycle_config
+        Rules.append(policy['Rules'][0])
+        #print(Rules)
+        lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+    except ClientError as err:
+        #print(err.response)
+        if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+            s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules': lifecycle_config['Rules'] })            
+        elif err.response['Error']['ArgumentName'] == 'ID':
+            print( err.response['Error']['ArgumentValue'] + ' already exsists and skipping rule')
+
+
+def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config):
+    ownerAccountId = getAccountID()
+    try:
+        result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
+        #print(result)
+        Rules= result['Rules']
+        if lifecycle_config['Rules'][0]['ID'] == 'MMSMoveCustomPolicy':            
+            for target in Rules:
+                try:
+                    #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
+                    if target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                        if target['Transitions']['StorageClass'] not in ['GLACIER_IR'] and target['Filter']['ObjectSizeGreaterThan']  > 131072  :
+                            print('C1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                            Rules.remove(target)
+                            s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+                except  KeyError:
                     continue
-        
-        
         
         policy = lifecycle_config
         Rules.append(policy['Rules'][0])
@@ -185,6 +247,10 @@ def updateBucketsLcpStd():
             put_bucket_lifecycle_configuration_standard(Name,MMSVersioningPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSMPUPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSDeleteMarkers)
+            put_bucket_lifecycle_configuration_standard(Name,MMSDeletionStandardPolicy)
+            
+            put_bucket_lifecycle_configuration_custom(Name,MMSMoveCustomPolicy)
+            
 
 def createXls(user_dict,stage):
     currenttime = now.strftime("%H%M%S")
