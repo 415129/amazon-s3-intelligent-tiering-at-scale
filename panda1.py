@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Font
+from  boto_formatter.core_formatter import boto_response_formatter
 
 s3 = boto3.client('s3')
 now = datetime.now()
@@ -114,6 +115,8 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                         print('1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+                    
+                        
                 except  ClientError as err:
                     print(err)
                     if err.response['Error']['Code'] == 'InvalidRequest':
@@ -125,7 +128,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
             for target in Rules:
                 try:
                     
-                    if target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 or target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31 or target['Expiration']['Days'] > 31 or target['ID'] not in stdpname:
+                    if (target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 and target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31) or target['Expiration']['Days'] > 31 or target['ID'] not in stdpname:
                         #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] ,target['NoncurrentVersionExpiration']['NoncurrentDays'] , target['Expiration']['Days'] > 31 or target['ID'])               
                         print('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
@@ -140,6 +143,8 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                         print('21-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
+                    else:
+                        Rules.append(lifecycle_config['Rules'][0])
                 except  KeyError:
                     continue                
      
@@ -219,11 +224,11 @@ def getAccountID():
 
 def main():
     createignorelist()
-    #listBuckets()
-    #createXls(policy,'backup')
+    listBuckets()
+    createXls(policy,'backup')
     updateBucketsLcpStd()
-    #listBuckets()
-    #createXls(policy,'postchange')
+    listBuckets()
+    createXls(policy,'postchange')
     
 
 
@@ -289,22 +294,24 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
                     Bucket=Name, LifecycleConfiguration = policy)
         else:
             print ("err.response['Error']['Code']")
-            
+          
 def getLCP(Name):
     ownerAccountId = getAccountID()
     try:
         result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
         Rules = result['Rules']
+        #print(Rules)
         n = 1
         for r1 in Rules:
             vname= Name + '_Rule_' + str(n)
-            policy[vname] = r1
+            #policy[vname] = r1
+            #n+= 1
             #print(policy)
             #print(r1['ID'])
-            #if r1['ID'] not in stdpname:
-            #    policy[vname] = r1
+            if r1['ID'] not in stdpname:
+                policy[vname] = r1
                 #print(policy)
-            #n += 1
+            n += 1
         #print(Rules.type())            
         #policy[Name] = Rules
         #print(policy)
@@ -319,7 +326,7 @@ def listBuckets():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in tqdm(BucketName['Buckets']):
-        if  bucket['Name'] not in ignorelist:
+        if  bucket['Name'] not in ignorelist: #and bucket['Name'] == 'oraclebkupbucket':
             Name = bucket['Name']
             getLCP(Name)
 
@@ -328,7 +335,7 @@ def updateBucketsLcpStd():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in BucketName['Buckets']:
-        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'oraclebkupbucket':
+        if  bucket['Name'] not in ignorelist: # and bucket['Name'] == 'oraclebkupbucket':
             Name = bucket['Name']
             print(Name)
             #print(MMSVersioningPolicy['Rules'][0]['ID'])
@@ -346,6 +353,11 @@ def createXls(user_dict,stage):
     currenttime = now.strftime("%H%M%S")
     filename = stage + getAccountID() + ".xlsx" #+"-"+currenttime+".xlsx"
     print("Results are available in ./" + filename + ".")
+    #print(user_dict)
+    #print('-------------------------------------------------------------------------------------')
+    # data = json.loads(user_dict)
+    # formatted_data = json.dumps(data, indent=2)
+    # print(formatted_data)
     df = pd.DataFrame.from_dict(user_dict, orient='columns').transpose()
     df.to_excel(filename, index = True)
     convertxls(filename)
