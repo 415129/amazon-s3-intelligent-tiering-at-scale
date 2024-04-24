@@ -16,19 +16,19 @@ current_time = now.strftime("%H:%M:%S")
 iam = boto3.resource('iam')
 client = boto3.client('sts')
 ignorelist=[]
-servicelist=['vpc','s3','elb','CloudTrail','rds']
-region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2']
+servicelist=['vpc','s3','elb','CloudTrail','rds','']
+region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2','ap-south-1']
 column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
-stdpname = ['MMS_Versioning_Policy_3v_retains','MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']
+stdpname = ['MMSStdVerPolicy_0D_3vR ','MMSDeletionStandardPolicy','MMSStdDelMarkerPolicy','AbortIncompleteMultipartUploadsRule','MMSStdVerPolicy_31D_1vR']
 ## Global list variable to keep track of the Bucket Name, Transition Days, StorageClass, Status  
 TransitionStatus = []
 
 policy = {}
 ruledict= {}
 
-MMSVersioningPolicy = {
+MMSStdVerPolicy_31D_1vR = {
     'Rules': [
-        {'ID': 'MMSVersioningPolicy',
+        {'ID': 'MMSStdVerPolicy_31D_1vR',
          'Expiration': {'Days': 31},
          'Filter': {},
          'Status': 'Enabled', 
@@ -36,9 +36,9 @@ MMSVersioningPolicy = {
         }
     ]}
 
-MMS_Versioning_Policy_3v_retains = {
+MMSStdVerPolicy_0D_3vR  = {
     'Rules': [
-        {'ID': 'MMS_Versioning_Policy_3v_retains',
+        {'ID': 'MMSStdVerPolicy_0D_3vR ',
          'Filter': {},
          'Status': 'Enabled', 
          'NoncurrentVersionExpiration': {'NoncurrentDays': 1, 'NewerNoncurrentVersions': 3}
@@ -57,10 +57,10 @@ AbortIncompleteMultipartUploadsRule = {
         ]
     }
 
-MMSDeleteMarkers= {
+MMSStdDelMarkerPolicy= {
     'Rules': [
         {
-          'ID': 'MMSDeleteMarkers',
+          'ID': 'MMSStdDelMarkerPolicy',
           'Expiration': {'ExpiredObjectDeleteMarker': True},
           'Filter': {},
           'Status': 'Enabled'         
@@ -79,10 +79,10 @@ MMSDeleteMarkers= {
 #         ]
 #     }
 
-MMSMoveCustomPolicy = {
+MMSStdMovPolicy_128kb_120D_G_IA_7Y  = {
     'Rules': [
         {
-        'ID': 'MMSMoveCustomPolicy',
+        'ID': 'MMSStdMovPolicy_128kb_120D_G_IA_7Y ',
         'Expiration': {'Days': 2555},
         'Filter': {'ObjectSizeGreaterThan': 131072}, 
         'Status': 'Enabled',
@@ -97,7 +97,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
         result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
         #print(result)
         Rules= result['Rules']
-        if lifecycle_config['Rules'][0]['ID'] == 'MMSDeleteMarkers':            
+        if lifecycle_config['Rules'][0]['ID'] == 'MMSStdDelMarkerPolicy':            
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
@@ -124,7 +124,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
                     continue
-        elif lifecycle_config['Rules'][0]['ID'] == 'MMSVersioningPolicy':
+        elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_31D_1vR':
             for target in Rules:
                 try:
                     
@@ -135,7 +135,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
                     continue
-        elif lifecycle_config['Rules'][0]['ID'] == 'MMS_Versioning_Policy_3v_retains':
+        elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_0D_3vR ':
             for target in Rules:
                 try:                    
                     if (target['NoncurrentVersionExpiration']['NoncurrentDaystarget'] == 1 and target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 3) or target['ID'] not in stdpname :
@@ -176,11 +176,11 @@ def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config):
         result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
         #print(result)
         Rules= result['Rules']
-        if lifecycle_config['Rules'][0]['ID'] == 'MMSMoveCustomPolicy':            
+        if lifecycle_config['Rules'][0]['ID'] == 'MMSStdMovPolicy_128kb_120D_G_IA_7Y ':            
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
-                    if target['ID'] not in ['MMSDeletionStandardPolicy','MMSDeleteMarkers','AbortIncompleteMultipartUploadsRule','MMSVersioningPolicy']:
+                    if target['ID'] not in ['MMSDeletionStandardPolicy','MMSStdDelMarkerPolicy','AbortIncompleteMultipartUploadsRule','MMSStdVerPolicy_31D_1vR']:
                         if target['Transitions']['StorageClass'] not in ['GLACIER_IR'] and target['Filter']['ObjectSizeGreaterThan']  > 131072  :
                             print('C1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                             Rules.remove(target)
@@ -338,15 +338,15 @@ def updateBucketsLcpStd():
         if  bucket['Name'] not in ignorelist: # and bucket['Name'] == 'oraclebkupbucket':
             Name = bucket['Name']
             print(Name)
-            #print(MMSVersioningPolicy['Rules'][0]['ID'])
-            put_bucket_lifecycle_configuration(Name,MMSMoveCustomPolicy)
-            put_bucket_lifecycle_configuration_standard(Name,MMSVersioningPolicy)
+            #print(MMSStdVerPolicy_31D_1vR['Rules'][0]['ID'])
+            put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IA_7Y )
+            put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_31D_1vR)
             put_bucket_lifecycle_configuration_standard(Name,AbortIncompleteMultipartUploadsRule)
-            put_bucket_lifecycle_configuration_standard(Name,MMSDeleteMarkers)
+            put_bucket_lifecycle_configuration_standard(Name,MMSStdDelMarkerPolicy)
             #put_bucket_lifecycle_configuration_standard(Name,MMSDeletionStandardPolicy)
-            put_bucket_lifecycle_configuration_standard(Name,MMS_Versioning_Policy_3v_retains)
+            put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_0D_3vR )
             
-            #put_bucket_lifecycle_configuration_custom(Name,MMSMoveCustomPolicy)
+            #put_bucket_lifecycle_configuration_custom(Name,MMSStdMovPolicy_128kb_120D_G_IA_7Y )
             
 
 def createXls(user_dict,stage):
