@@ -16,10 +16,10 @@ current_time = now.strftime("%H:%M:%S")
 iam = boto3.resource('iam')
 client = boto3.client('sts')
 ignorelist=[]
-servicelist=['vpc','s3','elb','CloudTrail','rds','']
+servicelist=['vpc','s3','elb','CloudTrail','rds']
 region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2','ap-south-1']
 column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
-stdpname = ['MMSStdVerPolicy_0D_3vR ','MMSDeletionStandardPolicy','MMSStdDelMarkerPolicy','AbortIncompleteMultipartUploadsRule','MMSStdVerPolicy_31D_1vR']
+stdpname = ['MMSStdVerPolicy_0D_3vR','MMSDeletionStandardPolicy','MMSStdDelMarkerPolicy','AbortIncompleteMultipartUploadsRule','MMSStdVerPolicy_31D_1vR']
 ## Global list variable to keep track of the Bucket Name, Transition Days, StorageClass, Status  
 TransitionStatus = []
 
@@ -36,9 +36,9 @@ MMSStdVerPolicy_31D_1vR = {
         }
     ]}
 
-MMSStdVerPolicy_0D_3vR  = {
+MMSStdVerPolicy_0D_3vR = {
     'Rules': [
-        {'ID': 'MMSStdVerPolicy_0D_3vR ',
+        {'ID': 'MMSStdVerPolicy_0D_3vR',
          'Filter': {},
          'Status': 'Enabled', 
          'NoncurrentVersionExpiration': {'NoncurrentDays': 1, 'NewerNoncurrentVersions': 3}
@@ -135,7 +135,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
                     continue
-        elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_0D_3vR ':
+        elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_0D_3vR':
             for target in Rules:
                 try:                    
                     if (target['NoncurrentVersionExpiration']['NoncurrentDaystarget'] == 1 and target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 3) or target['ID'] not in stdpname :
@@ -344,14 +344,14 @@ def updateBucketsLcpStd():
             put_bucket_lifecycle_configuration_standard(Name,AbortIncompleteMultipartUploadsRule)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdDelMarkerPolicy)
             #put_bucket_lifecycle_configuration_standard(Name,MMSDeletionStandardPolicy)
-            put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_0D_3vR )
+            put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_0D_3vR)
             
             #put_bucket_lifecycle_configuration_custom(Name,MMSStdMovPolicy_128kb_120D_G_IA_7Y )
             
 
 def createXls(user_dict,stage):
     currenttime = now.strftime("%H%M%S")
-    filename = stage + getAccountID() + ".xlsx" #+"-"+currenttime+".xlsx"
+    filename = stage + '_' + getAccountID() + ".xlsx" #+"-"+currenttime+".xlsx"
     print("Results are available in ./" + filename + ".")
     #print(user_dict)
     #print('-------------------------------------------------------------------------------------')
