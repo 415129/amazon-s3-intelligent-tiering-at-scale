@@ -211,6 +211,9 @@ def createignorelist():
             ignorelist.append(name)
             name1='maximus-' + s1.lower() + '-backup-' + ownerAccountId + '-' + r1
             ignorelist.append(name1)
+            name2=getAccountName() +'-terraform-remote-state'
+            ignorelist.append(name2)
+    #print(ignorelist)
             
     
     
@@ -222,6 +225,12 @@ def getAccountID():
     #account_id = iam.CurrentUser().arn.split(':')[4]
     #return(account_id)
 
+def getAccountName():
+    #account_id = s3.list_account_aliases()
+    return( boto3.client('iam').list_account_aliases()['AccountAliases'][0])
+    #account_id = iam.CurrentUser().arn.split(':')[4]
+    #return(account_id)
+    
 def main():
     createignorelist()
     listBuckets()
@@ -263,7 +272,7 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
                         TransitionStatus.append('Updated the existing Lifecycle with Transition rule to S3 INT')
 
             Rules.append(policy['Rules'][0])
-            print(Rules)
+            #print(Rules)
             lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                         
     except ClientError as err:
@@ -335,7 +344,7 @@ def updateBucketsLcpStd():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in BucketName['Buckets']:
-        if  bucket['Name'] not in ignorelist: # and bucket['Name'] == 'oraclebkupbucket':
+        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'max-dbalab2-data-classification':
             Name = bucket['Name']
             print(Name)
             #print(MMSStdVerPolicy_31D_1vR['Rules'][0]['ID'])
@@ -343,10 +352,8 @@ def updateBucketsLcpStd():
             put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_31D_1vR)
             put_bucket_lifecycle_configuration_standard(Name,AbortIncompleteMultipartUploadsRule)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdDelMarkerPolicy)
-            #put_bucket_lifecycle_configuration_standard(Name,MMSDeletionStandardPolicy)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_0D_3vR)
-            
-            #put_bucket_lifecycle_configuration_custom(Name,MMSStdMovPolicy_128kb_120D_G_IA_7Y )
+
             
 
 def createXls(user_dict,stage):
