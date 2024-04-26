@@ -15,7 +15,7 @@ now = datetime.now()
 current_time = now.strftime("%H:%M:%S")
 iam = boto3.resource('iam')
 client = boto3.client('sts')
-SGW = boto3.client('storagegateway') #,region_name='us-west-2')
+#SGW = boto3.client('storagegateway') #,region_name='us-west-2')
 ignorelist=[]
 servicelist=['vpc','s3','elb','CloudTrail','rds']
 region=['us-east-1','us-west-1','ca-central-1','eu-west-2','us-west-2','us-east-2','ap-south-1']
@@ -459,21 +459,23 @@ def delete_row_with_merged_ranges(sheet, idx):
             mcr.shrink(bottom=1)
             
 def storagegatewaylist():
-    
-    response=SGW.list_gateways()
-    #print(response)
-    for gtw in response['Gateways']:
-        #print(gtw['GatewayARN'],gtw['GatewayName'])
-        fileShare= SGW.list_file_shares(GatewayARN=gtw['GatewayARN'])
-        for fs1 in fileShare['FileShareInfoList']:
-            if fs1['FileShareType'] == 'SMB':
-                #print(fs1['FileShareARN'])
-                smb_file_shares=SGW.describe_smb_file_shares(FileShareARNList=[fs1['FileShareARN']])
-                #print(smb_file_shares)
-                for fsd1 in smb_file_shares['SMBFileShareInfoList']:
-                    #print(fsd1['LocationARN'].split(':::')[1])
-                    ignorelist.append(fsd1['LocationARN'].split(':::')[1])
-    #print(ignorelist)                
+    for r1 in region:
+        SGW = boto3.client('storagegateway',region_name=r1)    
+        response=SGW.list_gateways()
+        #print(response)
+        for gtw in response['Gateways']:
+            #print(gtw['GatewayARN'],gtw['GatewayName'])
+            fileShare= SGW.list_file_shares(GatewayARN=gtw['GatewayARN'])
+            for fs1 in fileShare['FileShareInfoList']:
+                if fs1['FileShareType'] == 'SMB':
+                    #print(fs1['FileShareARN'])
+                    smb_file_shares=SGW.describe_smb_file_shares(FileShareARNList=[fs1['FileShareARN']])
+                    #print(smb_file_shares)
+                    for fsd1 in smb_file_shares['SMBFileShareInfoList']:
+                        #print(fsd1['LocationARN'].split(':::')[1])
+                        ignorelist.append(fsd1['LocationARN'].split(':::')[1])
+    #print(ignorelist)  
+                  
 def main():
     storagegatewaylist()
     createignorelist()
