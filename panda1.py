@@ -213,9 +213,22 @@ def createignorelist():
             ignorelist.append(name)
             name1='maximus-' + s1.lower() + '-backup-' + ownerAccountId + '-' + r1
             ignorelist.append(name1)
-            name2=getAccountName() +'-terraform-remote-state'
-            ignorelist.append(name2)
+    name2=getAccountName() +'-terraform-remote-state'
+    ignorelist.append(name2)
+    BucketName = s3.list_buckets()
+    for bucket in BucketName['Buckets']:
+        #print(bucket)
+        try:
+            tag_set = s3.get_bucket_tagging(Bucket=bucket['Name'])
+            for tag in tag_set['TagSet']:
+                tag_values = list(tag.values())
+                #print(tag_values)
+                if (tag[0] == 'provisioner' and tag[1] == 'terraform') and tag[0] == 'group_nse':
+                    ignorelist.append(bucket['Name'])
+                
     #print(ignorelist)
+        except  KeyError:
+            continue
           
     
     
@@ -479,7 +492,7 @@ def storagegatewaylist():
 def main():
     storagegatewaylist()
     createignorelist()
-    print(ignorelist)
+    #print(ignorelist)
     listBuckets()
     createXls(policy,'backup')
     updateBucketsLcpStd()
