@@ -384,8 +384,8 @@ def updateBucketsLcpStd():
         if  bucket['Name'] not in ignorelist: # and bucket['Name'] in ['maximus-rds-backup-813408048622-us-east-1-baseline']:
         #if  bucket['Name'] not in ignorelist:
             Name = bucket['Name']
-            print(Name)
-            logging.info(f'Bicket Name = {Name}')
+            print(f'Bucket Name = {Name}')
+            logging.info(f'Bucket Name = {Name}')
             #print(MMSStdVerPolicy_31D_1vR['Rules'][0]['ID'])
             put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IR_7Y)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_31D_1vR)
