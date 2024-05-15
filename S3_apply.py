@@ -1,4 +1,5 @@
 import boto3
+import logging
 import pandas as pd
 from datetime import datetime
 from botocore.exceptions import ClientError
@@ -11,7 +12,11 @@ from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Font
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string, get_column_letter
-
+logname = datetime.now().strftime('logfile_S3_Apply_%H_%M_%S_%d_%m_%Y.log')
+print(logname)
+logging.basicConfig(filename=logname,level=logging.INFO,filemode='w', format='%(levelname)s: %(asctime)s: %(message)s' ,force=True)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 now = datetime.now()
@@ -55,6 +60,7 @@ def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config,pname):
                     #print(target['ID'],pname)               
                     if target['ID'] == pname:
                         print('0-ReCreating LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        logging.info('0-ReCreating LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
@@ -70,9 +76,9 @@ def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config,pname):
         if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
             s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules': lifecycle_config['Rules'] })            
         elif err.response['Error']['Code'] == 'InvalidRequest':
-            print(err.response)
+            logging.info(err.response)
         elif err.response['Error']['Code'] == 'MalformedXML':
-            print( err.response['Error']['Code'] + ' Rule info is  not well-formed or did not validate against our published schema')
+            logging.info( err.response['Error']['Code'] + ' Rule info is  not well-formed or did not validate against our published schema')
 
 
 
