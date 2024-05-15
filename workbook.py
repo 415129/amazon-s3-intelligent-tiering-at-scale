@@ -9,7 +9,7 @@ max_row=ws.max_row
 max_col=ws.max_column
 
 print(max_row,max_col)
-column_list=['test2',None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
+column_list=[None, 'ID', 'Filter', 'Status', 'AbortIncompleteMultipartUpload', 'Prefix', 'Expiration', 'Transitions', 'NoncurrentVersionExpiration', 'NoncurrentVersionTransitions']
 
 for c1 in column_list:
     #for COL in ws.iter_cols(1, ws.max_column):

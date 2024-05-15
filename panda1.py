@@ -81,7 +81,7 @@ MMSStdDelMarkerPolicy= {
 #         ]
 #     }
 
-MMSStdMovPolicy_128kb_120D_G_IA_7Y  = {
+MMSStdMovPolicy_128kb_120D_G_IR_7Y  = {
     'Rules': [
         {
         'ID': 'MMSStdMovPolicy_128kb_120D_G_IA_7Y ',
@@ -357,7 +357,7 @@ def updateBucketsLcpStd():
             Name = bucket['Name']
             print(Name)
             #print(MMSStdVerPolicy_31D_1vR['Rules'][0]['ID'])
-            put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IA_7Y )
+            put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IR_7Y )
             put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_31D_1vR)
             put_bucket_lifecycle_configuration_standard(Name,AbortIncompleteMultipartUploadsRule)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdDelMarkerPolicy)
