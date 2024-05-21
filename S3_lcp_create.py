@@ -37,7 +37,6 @@ sgwlist=[]
 MMSStdVerPolicy_31D_1vR = {
     'Rules': [
         {'ID': 'MMSStdVerPolicy_31D_1vR',
-         'Expiration': {'Days': 31},
          'Filter': {},
          'Status': 'Enabled', 
          'NoncurrentVersionExpiration': {'NoncurrentDays': 31, 'NewerNoncurrentVersions': 1}
@@ -137,9 +136,8 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                     continue
         elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_31D_1vR':
             for target in Rules:
-                try:
-                    
-                    if (target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 and target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31) or target['Expiration']['Days'] > 31 or target['ID'] not in stdpname:
+                try:                    
+                    if (target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 and target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31) or target['ID'] not in stdpname:
                         #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] ,target['NoncurrentVersionExpiration']['NoncurrentDays'] , target['Expiration']['Days'] > 31 or target['ID'])               
                         print('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         logging.info('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])

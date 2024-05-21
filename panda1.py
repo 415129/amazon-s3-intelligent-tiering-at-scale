@@ -1,4 +1,5 @@
 import boto3
+import logging
 import pandas as pd
 from datetime import datetime
 from botocore.exceptions import ClientError
@@ -9,6 +10,11 @@ from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Font
 from  boto_formatter.core_formatter import boto_response_formatter
+logname = datetime.now().strftime('logfile_S3_lcp_create_%H_%M_%S_%d_%m_%Y.log')
+print(logname)
+logging.basicConfig(filename=logname,level=logging.INFO,filemode='w', format='%(levelname)s: %(asctime)s: %(message)s' ,force=True)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 now = datetime.now()
@@ -31,7 +37,6 @@ sgwlist=[]
 MMSStdVerPolicy_31D_1vR = {
     'Rules': [
         {'ID': 'MMSStdVerPolicy_31D_1vR',
-         'Expiration': {'Days': 31},
          'Filter': {},
          'Status': 'Enabled', 
          'NoncurrentVersionExpiration': {'NoncurrentDays': 31, 'NewerNoncurrentVersions': 1}
@@ -84,7 +89,7 @@ MMSStdDelMarkerPolicy= {
 MMSStdMovPolicy_128kb_120D_G_IR_7Y  = {
     'Rules': [
         {
-        'ID': 'MMSStdMovPolicy_128kb_120D_G_IA_7Y ',
+        'ID': 'MMSStdMovPolicy_128kb_120D_G_IR_7Y ',
         'Expiration': {'Days': 2555},
         'Filter': {'ObjectSizeGreaterThan': 131072}, 
         'Status': 'Enabled',
@@ -105,6 +110,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
                     if target['Expiration']['ExpiredObjectDeleteMarker'] == 'Ture' or target['ID'] not in stdpname:
                         print('0-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        logging.info('0-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
@@ -115,12 +121,14 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
                     if target['AbortIncompleteMultipartUpload']['DaysAfterInitiation'] > 6 or target['ID'] not in stdpname :
                         print('1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        logging.info('1-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                     
                         
                 except  ClientError as err:
                     print(err)
+                    logging.error(f'ERROR = {err}')
                     if err.response['Error']['Code'] == 'InvalidRequest':
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
@@ -128,11 +136,11 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                     continue
         elif lifecycle_config['Rules'][0]['ID'] == 'MMSStdVerPolicy_31D_1vR':
             for target in Rules:
-                try:
-                    
-                    if (target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 and target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31) or target['Expiration']['Days'] > 31 or target['ID'] not in stdpname:
+                try:                    
+                    if (target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 1 and target['NoncurrentVersionExpiration']['NoncurrentDays'] > 31) or target['ID'] not in stdpname:
                         #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] ,target['NoncurrentVersionExpiration']['NoncurrentDays'] , target['Expiration']['Days'] > 31 or target['ID'])               
                         print('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        logging.info('2-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                 except  KeyError:
@@ -143,6 +151,7 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
                     if (target['NoncurrentVersionExpiration']['NoncurrentDaystarget'] == 1 and target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] > 3) or target['ID'] not in stdpname :
                         #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'] ,target['NoncurrentVersionExpiration']['NoncurrentDays'] , target['Expiration']['Days'] > 31 or target['ID'])               
                         print('21-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
+                        logging.info('21-Deleteing LCP from Bucket = ' + Name + ' ,LCP = ' + target['ID'])
                         Rules.remove(target)
                         s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
                     else:
@@ -160,14 +169,18 @@ def put_bucket_lifecycle_configuration_standard(Name, lifecycle_config):
     except ClientError as err:
         if err.response['Error']['Code'] == 'AccessDenied':
             print ("This account does not own the bucket {}.".format(Name))
+            logging.error("This account does not own the bucket {}.".format(Name))
     except ClientError as err:
         print(err.response)
+        logging.error(f'EROOR = {err.response}')
         if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
             s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules': lifecycle_config['Rules'] })            
         elif  err.response['Error']['Code'] == 'InvalidRequest':
             print(Rules,err.response)
+            logging.error(f'EROOR = {Rules} - {err.response}')
         elif err.response['Error']['ArgumentName'] == 'ID':
             print( err.response['Error']['ArgumentValue'] + ' already exists and skipping rule')
+            logging.error(err.response['Error']['ArgumentValue'] + ' already exists and skipping rule')
 
             
 
@@ -178,7 +191,7 @@ def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config):
         result = s3.get_bucket_lifecycle_configuration(Bucket=Name, ExpectedBucketOwner=ownerAccountId)
         #print(result)
         Rules= result['Rules']
-        if lifecycle_config['Rules'][0]['ID'] == 'MMSStdMovPolicy_128kb_120D_G_IA_7Y ':            
+        if lifecycle_config['Rules'][0]['ID'] == 'MMSStdMovPolicy_128kb_120D_G_IR_7Y':            
             for target in Rules:
                 try:
                     #print(target['NoncurrentVersionExpiration']['NewerNoncurrentVersions'])               
@@ -196,12 +209,15 @@ def put_bucket_lifecycle_configuration_custom(Name, lifecycle_config):
         lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules':Rules })
     except ClientError as err:
         #print(err.response)
+        logging.error(f'EROOR = {err.response}')
         if err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
             s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = {'Rules': lifecycle_config['Rules'] })            
         elif err.response['Error']['ArgumentName'] == 'ID':
             print( err.response['Error']['ArgumentValue'] + ' already exsists and skipping rule')
+            logging.error(err.response['Error']['ArgumentValue'] + ' already exsists and skipping rule')
         elif err.response['Error']['Code'] == 'InvalidRequest':
             print(err.response)
+            logging.error(f'EROOR = {err.response}')
 
 
 
@@ -217,18 +233,25 @@ def createignorelist():
     ignorelist.append(name2)
     BucketName = s3.list_buckets()
     for bucket in BucketName['Buckets']:
+        #if bucket['Name'] in ['maximus-rds-backup-813408048622-us-east-1-baseline']:
         #print(bucket)
-        try:
-            tag_set = s3.get_bucket_tagging(Bucket=bucket['Name'])
-            for tag in tag_set['TagSet']:
-                tag_values = list(tag.values())
-                #print(tag_values)
-                if (tag[0] == 'provisioner' and tag[1] == 'terraform') and tag[0] == 'group_nse':
-                    ignorelist.append(bucket['Name'])
+            try:
+                tag_set = s3.get_bucket_tagging(Bucket=bucket['Name'])
+                for tag in tag_set['TagSet']:
+                    tag_values = list(tag.values())
+                    #print(tag_values)
+                    if (tag_values[0] == 'provisioner' and tag_values[1] == 'terraform') or tag_values[0] == 'group_nse':
+                        #print(bucket['Name'])
+                        ignorelist.append(bucket['Name'])
+                    
+                #print(ignorelist)
+            except  KeyError:
+                continue
+            except ClientError as err:
+                if err.response['Error']['Code'] == 'NoSuchTagSet':
+                    print('')
                 
-    #print(ignorelist)
-        except  KeyError:
-            continue
+            
           
     
     
@@ -290,6 +313,7 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
         print (err.response['Error']['Code'])
         if err.response['Error']['Code'] == 'AccessDenied':
                 print ("This account does not own the bucket {}.".format(Name))
+                logging.error("This account does not own the bucket {}.".format(Name))
                 Days = 'N/A'
                 StorageClass ='N/A'
                 TransitionStatus.append(Name)
@@ -298,6 +322,7 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
                 TransitionStatus.append("The Bucket "+Name+" does not belong to the account-"+ownerAccountId)
         elif err.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
                 print("This bucket {} has no LifeCycle Configuration".format(Name)) 
+                logging.error("This bucket {} has no LifeCycle Configuration".format(Name))
                 policy = lifecycle_config 
                 for p in policy['Rules']:
                     for key, value in p.items():
@@ -308,10 +333,10 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
                             TransitionStatus.append(Days)
                             TransitionStatus.append(StorageClass)
                             TransitionStatus.append('Added a new S3 Lifecycle Transition Rule to S3 INT')
-                lcp = s3.put_bucket_lifecycle_configuration(
-                    Bucket=Name, LifecycleConfiguration = policy)
+                lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = policy)
         else:
-            print ("err.response['Error']['Code']")
+            print (err.response['Error']['Code'])
+            logging.error(err.response['Error']['Code'])
           
 def getLCP(Name):
     ownerAccountId = getAccountID()
@@ -353,11 +378,13 @@ def updateBucketsLcpStd():
     #print(ignorelist)
     #for bucket in BucketName['Buckets']:
     for bucket in BucketName['Buckets']:
-        if  bucket['Name'] not in ignorelist and bucket['Name'] == 'max-dbalab2-data-classification':
+        if  bucket['Name'] not in ignorelist: # and bucket['Name'] in ['maximus-rds-backup-813408048622-us-east-1-baseline']:
+        #if  bucket['Name'] not in ignorelist:
             Name = bucket['Name']
-            print(Name)
+            print(f'Bucket Name = {Name}')
+            logging.info(f'Bucket Name = {Name}')
             #print(MMSStdVerPolicy_31D_1vR['Rules'][0]['ID'])
-            put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IR_7Y )
+            put_bucket_lifecycle_configuration(Name,MMSStdMovPolicy_128kb_120D_G_IR_7Y)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdVerPolicy_31D_1vR)
             put_bucket_lifecycle_configuration_standard(Name,AbortIncompleteMultipartUploadsRule)
             put_bucket_lifecycle_configuration_standard(Name,MMSStdDelMarkerPolicy)
@@ -488,13 +515,16 @@ def storagegatewaylist():
                         #print(fsd1['LocationARN'].split(':::')[1])
                         ignorelist.append(fsd1['LocationARN'].split(':::')[1])
     #print(ignorelist)  
+    logging.info(f'ignorelist = {ignorelist}')
                   
 def main():
     storagegatewaylist()
     createignorelist()
     #print(ignorelist)
+    logging.info(ignorelist)
     listBuckets()
     createXls(policy,'backup')
+    policy.clear()
     updateBucketsLcpStd()
     listBuckets()
     createXls(policy,'postchange')
