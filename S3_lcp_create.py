@@ -335,11 +335,10 @@ def put_bucket_lifecycle_configuration(Name, lifecycle_config):
                             TransitionStatus.append(Days)
                             TransitionStatus.append(StorageClass)
                             TransitionStatus.append('Added a new S3 Lifecycle Transition Rule to S3 INT')
-                lcp = s3.put_bucket_lifecycle_configuration(
-                    Bucket=Name, LifecycleConfiguration = policy)
+                lcp = s3.put_bucket_lifecycle_configuration(Bucket=Name, LifecycleConfiguration = policy)
         else:
-            print ("err.response['Error']['Code']")
-            logging.error("err.response['Error']['Code']")
+            print (err.response['Error']['Code'])
+            logging.error(err.response['Error']['Code'])
           
 def getLCP(Name):
     ownerAccountId = getAccountID()
